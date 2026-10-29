@@ -15,16 +15,19 @@
     <string name="section_engine">2. Inference engine</string>
     <string name="analysis_engine">Tone analysis (runs as you type)</string>
     <string name="suggestion_engine">Rewrite suggestions (runs when you tap Fix tone)</string>
-    <string name="backend_auto">Auto: on-device first, then cloud, then offline</string>
+    <string name="backend_jev">Jev (TypeSafe AI decision model)</string>
+    <string name="backend_auto">Auto: Jev or on-device first, then cloud, then offline</string>
     <string name="backend_on_device">On-device Gemini Nano (AICore)</string>
     <string name="backend_cloud">Cloud Gemini (Gemini API key)</string>
     <string name="backend_heuristic">Offline keyword heuristic (demo / emulator)</string>
     <string name="on_device_status_label">Gemini Nano status</string>
     <string name="download_model">Download Gemini Nano</string>
     <string name="refresh">Refresh</string>
+    <string name="jev_api_key_hint">Jev API key (TypeSafe AI)</string>
+    <string name="jev_model_hint">Jev model, e.g. jev-latest</string>
     <string name="api_key_hint">Gemini API key (aistudio.google.com/apikey)</string>
     <string name="model_hint">Cloud model, e.g. gemini-flash-lite-latest</string>
-    <string name="cloud_privacy_note">Cloud mode sends the text of the focused field to Google\'s Gemini API. Password fields are always skipped.</string>
+    <string name="cloud_privacy_note">Jev and cloud Gemini send the focused field\'s text (and, if enabled, the on-screen conversation) to TypeSafe AI or Google. Password fields are always skipped.</string>
 
     <string name="section_behavior">3. Behavior</string>
     <string name="flag_threshold">Show the fix-it button at severity %1$d+</string>

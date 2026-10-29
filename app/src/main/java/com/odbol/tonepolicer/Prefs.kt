@@ -2,15 +2,17 @@ package com.odbol.tonepolicer
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.odbol.tonepolicer.inference.JevAnalyzer
 
 enum class Backend(val id: String) {
     AUTO("auto"),
+    JEV("jev"),
     ON_DEVICE("on_device"),
     CLOUD("cloud"),
     HEURISTIC("heuristic");
 
     companion object {
-        fun fromId(id: String?): Backend = entries.firstOrNull { it.id == id } ?: AUTO
+        fun fromId(id: String?, default: Backend): Backend = entries.firstOrNull { it.id == id } ?: default
     }
 }
 
@@ -25,12 +27,12 @@ class Prefs(context: Context) {
 
     /** Which model scores the tone on every pause in typing. */
     var analysisBackend: Backend
-        get() = Backend.fromId(sp.getString(KEY_ANALYSIS_BACKEND, null))
+        get() = Backend.fromId(sp.getString(KEY_ANALYSIS_BACKEND, null), Backend.JEV)
         set(value) = sp.edit().putString(KEY_ANALYSIS_BACKEND, value.id).apply()
 
     /** Which model writes the rewrites when "Fix tone" is tapped. */
     var suggestionBackend: Backend
-        get() = Backend.fromId(sp.getString(KEY_SUGGESTION_BACKEND, null))
+        get() = Backend.fromId(sp.getString(KEY_SUGGESTION_BACKEND, null), Backend.ON_DEVICE)
         set(value) = sp.edit().putString(KEY_SUGGESTION_BACKEND, value.id).apply()
 
     // Stored in plain app-private prefs. For a production build, prefer Firebase AI Logic
@@ -38,6 +40,14 @@ class Prefs(context: Context) {
     var apiKey: String
         get() = sp.getString(KEY_API_KEY, "").orEmpty()
         set(value) = sp.edit().putString(KEY_API_KEY, value.trim()).apply()
+
+    var jevApiKey: String
+        get() = sp.getString(KEY_JEV_API_KEY, "").orEmpty()
+        set(value) = sp.edit().putString(KEY_JEV_API_KEY, value.trim()).apply()
+
+    var jevModel: String
+        get() = sp.getString(KEY_JEV_MODEL, null)?.takeIf { it.isNotBlank() } ?: JevAnalyzer.DEFAULT_MODEL
+        set(value) = sp.edit().putString(KEY_JEV_MODEL, value.trim()).apply()
 
     var cloudModel: String
         get() = sp.getString(KEY_CLOUD_MODEL, null)?.takeIf { it.isNotBlank() } ?: DEFAULT_CLOUD_MODEL
@@ -76,6 +86,8 @@ class Prefs(context: Context) {
         const val KEY_SUGGESTION_BACKEND = "suggestion_backend"
         const val KEY_API_KEY = "gemini_api_key"
         const val KEY_CLOUD_MODEL = "cloud_model"
+        const val KEY_JEV_API_KEY = "jev_api_key"
+        const val KEY_JEV_MODEL = "jev_model"
         const val KEY_THRESHOLD = "flag_threshold"
         const val KEY_SHOW_GOOD = "show_good_border"
         const val KEY_SCREEN_CONTEXT = "include_screen_context"
@@ -83,7 +95,7 @@ class Prefs(context: Context) {
         const val KEY_LAST_ERROR = "last_error"
 
         /** Keys that require rebuilding the analyzer / suggester when they change. */
-        val ENGINE_KEYS = setOf(KEY_ANALYSIS_BACKEND, KEY_SUGGESTION_BACKEND, KEY_API_KEY, KEY_CLOUD_MODEL)
+        val ENGINE_KEYS = setOf(KEY_ANALYSIS_BACKEND, KEY_SUGGESTION_BACKEND, KEY_API_KEY, KEY_CLOUD_MODEL, KEY_JEV_API_KEY, KEY_JEV_MODEL)
 
         const val DEFAULT_CLOUD_MODEL = "gemini-flash-lite-latest"
     }

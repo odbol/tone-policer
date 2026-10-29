@@ -1,11 +1,7 @@
 package com.odbol.tonepolicer.inference
 
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
-import java.net.HttpURLConnection
-import java.net.URI
 import java.net.URLEncoder
 
 /**
@@ -20,7 +16,7 @@ class CloudGeminiEngine(
     override val name = "Gemini $model (cloud)"
 
     override suspend fun status(): EngineStatus =
-        if (apiKey.isBlank()) EngineStatus.NeedsApiKey else EngineStatus.Ready
+        if (apiKey.isBlank()) EngineStatus.NeedsApiKey("Gemini") else EngineStatus.Ready
 
     override suspend fun analyze(request: ToneRequest): ToneResult = try {
         Prompts.parseAnalysis(generate(Prompts.analysis(request), temperature = 0.1), name)
@@ -35,10 +31,8 @@ class CloudGeminiEngine(
         throw InferenceException("This text is too hostile for Gemini to rewrite. Try starting over.", e)
     }
 
-    private suspend fun generate(prompt: String, temperature: Double): String = withContext(Dispatchers.IO) {
+    private suspend fun generate(prompt: String, temperature: Double): String {
         if (apiKey.isBlank()) throw InferenceException("No Gemini API key set")
-
-        val url = URI("$BASE_URL/${URLEncoder.encode(model, "UTF-8")}:generateContent").toURL()
         val body = JSONObject()
             .put(
                 "contents",
@@ -55,29 +49,8 @@ class CloudGeminiEngine(
                     .put("responseMimeType", "application/json"),
             )
             .put("safetySettings", safetySettings())
-
-        val conn = url.openConnection() as HttpURLConnection
-        try {
-            conn.requestMethod = "POST"
-            conn.connectTimeout = 10_000
-            conn.readTimeout = 30_000
-            conn.doOutput = true
-            conn.setRequestProperty("Content-Type", "application/json; charset=utf-8")
-            conn.setRequestProperty("x-goog-api-key", apiKey)
-            conn.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
-
-            val code = conn.responseCode
-            val stream = if (code in 200..299) conn.inputStream else conn.errorStream
-            val text = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
-            if (code !in 200..299) {
-                val message = runCatching { JSONObject(text).getJSONObject("error").getString("message") }
-                    .getOrDefault(text.take(200))
-                throw InferenceException("Gemini API error $code: $message")
-            }
-            extractText(JSONObject(text))
-        } finally {
-            conn.disconnect()
-        }
+        val url = "$BASE_URL/${URLEncoder.encode(model, "UTF-8")}:generateContent"
+        return extractText(HttpJson.post(url, mapOf("x-goog-api-key" to apiKey), body, "Gemini API"))
     }
 
     private fun extractText(response: JSONObject): String {

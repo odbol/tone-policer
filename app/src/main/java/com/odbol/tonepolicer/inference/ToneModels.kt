@@ -59,7 +59,7 @@ sealed class EngineStatus(val description: String) {
     object Ready : EngineStatus("Ready")
     object Downloadable : EngineStatus("Model can be downloaded")
     object Downloading : EngineStatus("Model is downloading…")
-    object NeedsApiKey : EngineStatus("Needs a Gemini API key")
+    class NeedsApiKey(service: String) : EngineStatus("Needs a $service API key")
     class Unavailable(reason: String) : EngineStatus("Unavailable: $reason")
 }
 

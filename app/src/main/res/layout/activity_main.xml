@@ -72,6 +72,13 @@
             android:layout_height="wrap_content">
 
             <RadioButton
+                android:id="@+id/analysis_jev"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
+                android:text="@string/backend_jev" />
+
+            <RadioButton
                 android:id="@+id/analysis_auto"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -172,6 +179,25 @@
                 android:layout_marginStart="8dp"
                 android:text="@string/refresh" />
         </LinearLayout>
+
+        <EditText
+            android:id="@+id/jev_api_key"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:autofillHints="password"
+            android:hint="@string/jev_api_key_hint"
+            android:inputType="textPassword"
+            android:minHeight="48dp" />
+
+        <EditText
+            android:id="@+id/jev_model"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/jev_model_hint"
+            android:importantForAutofill="no"
+            android:inputType="textNoSuggestions"
+            android:minHeight="48dp" />
 
         <EditText
             android:id="@+id/api_key"

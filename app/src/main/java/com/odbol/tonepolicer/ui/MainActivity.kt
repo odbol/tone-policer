@@ -70,6 +70,7 @@ class MainActivity : Activity() {
         bindBackendPicker(
             R.id.analysis_group,
             mapOf(
+                Backend.JEV to R.id.analysis_jev,
                 Backend.AUTO to R.id.analysis_auto,
                 Backend.ON_DEVICE to R.id.analysis_on_device,
                 Backend.CLOUD to R.id.analysis_cloud,
@@ -124,6 +125,14 @@ class MainActivity : Activity() {
     }
 
     private fun bindCloudFields() {
+        findViewById<EditText>(R.id.jev_api_key).apply {
+            setText(prefs.jevApiKey)
+            addTextChangedListener(afterChanged { prefs.jevApiKey = it })
+        }
+        findViewById<EditText>(R.id.jev_model).apply {
+            setText(prefs.jevModel)
+            addTextChangedListener(afterChanged { prefs.jevModel = it })
+        }
         findViewById<EditText>(R.id.api_key).apply {
             setText(prefs.apiKey)
             addTextChangedListener(afterChanged { prefs.apiKey = it })

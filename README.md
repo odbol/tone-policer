@@ -92,15 +92,40 @@ under **2. Inference engine**:
 
 A backend can implement either interface or both. Adding one only touches `EngineFactory`.
 
+**Defaults:** Jev scores the tone, and on-device Gemini Nano writes the rewrites.
+
 | Option | Status | Privacy | Devices | Cost / setup | Quality and latency |
 | --- | --- | --- | --- | --- | --- |
+| **J. Jev, TypeSafe AI's decision model** (`JevAnalyzer`), analysis only | ✅ Implemented, default analyzer | Text goes to TypeSafe AI | Any device with internet | API key from TypeSafe AI; input tokens are very cheap and output is free | Returns typed answers (no text to parse). Can't write rewrites |
 | **A. On-device Gemini Nano via ML Kit GenAI Prompt API** (`OnDeviceGeminiEngine`) | ✅ Implemented | Text stays on the phone | AICore devices only (Pixel 9+, Galaxy S25+, some others) | Free; one-time model download (button in the app) | Good at scoring, decent at rewrites; roughly 0.3–1 s |
 | **B. Cloud Gemini via the Gemini Developer API (REST + API key)** (`CloudGeminiEngine`) | ✅ Implemented | Text goes to Google | Any device with internet | Free tier available; get a key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey) | Best quality; roughly 0.5–1.5 s with `gemini-flash-lite-latest` (any model name works) |
-| **C. Auto** (`FallbackAnalyzer` / `FallbackSuggester`) | ✅ Implemented, default | On-device when possible | Any | Uses whatever is set up | Tries A, then B (if a key is set), then D. Falls through on errors |
+| **C. Auto** (`FallbackAnalyzer` / `FallbackSuggester`) | ✅ Implemented | On-device when possible | Any | Uses whatever is set up | Analysis tries J (if a key is set), then A, then B (if a key is set), then D. Suggestions try A, B, then D. Falls through on errors |
 | **D. Offline keyword heuristic** (`HeuristicEngine`) | ✅ Implemented | On the phone | Any, including emulators | None | Crude. For demos and for testing the overlay |
 | E. ML Kit GenAI **Rewriting** API (`com.google.mlkit:genai-rewriting`) | Not implemented | On the phone | AICore devices | Free | Purpose-built rewrites (`PROFESSIONAL`, `FRIENDLY`, `REPHRASE` …). It can't score severity, so it would pair with A for `suggest()` |
 | F. **Firebase AI Logic** (`com.google.firebase:firebase-ai`) | Not implemented | Text goes to Google | Any | Needs a Firebase project and `google-services.json` | Same models as B, but no API key ships in the APK, and you get App Check and quotas. The right choice for a Play Store release |
 | G. Gemma via MediaPipe / LiteRT-LM | Not implemented | On the phone | Most recent phones | Free; you bundle or download a model of about 0.5–2 GB | Works on non-AICore phones; slower, and the app gets bigger |
+
+### How Jev is used
+
+Jev doesn't generate text. You send it a `state` and a set of typed questions, and it returns typed
+answers. `JevAnalyzer` sends one `POST https://api.typesafe.ai/v1/systemone` request (with
+`Authorization: Bearer <key>` and `model: jev-latest`) containing:
+
+| Question | Jev primitive | Becomes |
+| --- | --- | --- |
+| `severity` | **Score** on 5 levels, from "friendly" to "hostile" | `ToneResult.severity` (0–100) |
+| `main_issue` | **Choice** among `none`, `insulting`, `passive_aggressive`, `unempathetic`, … | Main category and its reason text |
+| `ignores_point`, `lacks_empathy`, `misses_thanks`, `bossy_request`, … (11 cues) | **Noul**, the probability the reply misses this cue | "Consider:" to-dos for cues at probability ≥ 0.6 |
+
+The state is the app name, the on-screen conversation and the message. A missed cue raises the
+severity to at least the "missing a nicety" band (16–40).
+
+**API details are from third-party sources.** I couldn't open the official docs from the build
+environment, so the request and response shapes come from search results that summarize TypeSafe's
+docs and other guides. The parser is lenient: it reads `choice` or the most likely of
+`probabilities`, `noul` or `probability`, and `score` or the expected value of the per-level
+`probabilities`. Check the exact field names against
+[docs.typesafe.ai/api](https://docs.typesafe.ai/api) on first run.
 
 **Recommendation:** use **Auto** for personal use (private and free when Nano is available, with the
 cloud only as backup). For a public release, swap B for **F (Firebase AI Logic)** so no API key ships
