@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="severity_good">#FF2ECC71</color>
+    <color name="severity_warn">#FFF1C40F</color>
+    <color name="severity_bad">#FFE74C3C</color>
+    <color name="brand">#FF5B4BDB</color>
+    <color name="launcher_background">#FF1E1B3A</color>
+</resources>

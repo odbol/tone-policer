@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Tone Policer</string>
+    <string name="accessibility_service_label">Tone Policer</string>
+    <string name="accessibility_service_description">Reads the text you type into text fields (never password fields) and asks Gemini whether it might come across as rude, inflammatory, unprofessional or standoffish. Fields get a green, yellow or red glow depending on how risky the wording is, and a button that suggests friendlier rewrites. With the on-device backend your text never leaves the phone; with the cloud backend it is sent to the Gemini API.</string>
+
+    <string name="tagline">Glows green, yellow or red around whatever you type, before you hit send.</string>
+
+    <string name="section_service">1. Accessibility service</string>
+    <string name="service_enabled">Service is ON. Start typing in any app.</string>
+    <string name="service_disabled">Service is OFF. Enable \"Tone Policer\" in Accessibility settings.</string>
+    <string name="open_accessibility_settings">Open accessibility settings</string>
+    <string name="monitoring_enabled">Monitor text fields</string>
+
+    <string name="section_engine">2. Inference engine</string>
+    <string name="backend_auto">Auto: on-device first, then cloud, then offline</string>
+    <string name="backend_on_device">On-device Gemini Nano (AICore)</string>
+    <string name="backend_cloud">Cloud Gemini (Gemini API key)</string>
+    <string name="backend_heuristic">Offline keyword heuristic (demo / emulator)</string>
+    <string name="on_device_status_label">Gemini Nano status</string>
+    <string name="download_model">Download Gemini Nano</string>
+    <string name="refresh">Refresh</string>
+    <string name="api_key_hint">Gemini API key (aistudio.google.com/apikey)</string>
+    <string name="model_hint">Cloud model, e.g. gemini-flash-lite-latest</string>
+    <string name="cloud_privacy_note">Cloud mode sends the text of the focused field to Google\'s Gemini API. Password fields are always skipped.</string>
+
+    <string name="section_behavior">3. Behavior</string>
+    <string name="flag_threshold">Show the fix-it button at severity %1$d+</string>
+    <string name="show_good_border">Show a green border when the text looks fine</string>
+
+    <string name="section_try">4. Try it</string>
+    <string name="try_hint">Type something passive-aggressive here…</string>
+    <string name="check_now">Check in-app</string>
+
+    <string name="fix_tone">✎ Fix tone</string>
+    <string name="suggestions">Suggestions</string>
+    <string name="tap_to_replace">Tap to replace · long-press to copy</string>
+    <string name="copied">Copied to clipboard</string>
+    <string name="close">Close</string>
+</resources>

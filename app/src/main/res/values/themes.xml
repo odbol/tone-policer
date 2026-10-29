@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.TonePolicer" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:colorPrimary">@color/brand</item>
+        <item name="android:colorAccent">@color/brand</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+
+    <style name="SectionTitle">
+        <item name="android:textAppearance">@android:style/TextAppearance.Material.Subhead</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:layout_marginTop">24dp</item>
+        <item name="android:layout_marginBottom">8dp</item>
+    </style>
+</resources>
