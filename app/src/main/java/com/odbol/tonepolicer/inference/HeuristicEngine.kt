@@ -55,12 +55,62 @@ class HeuristicEngine : InferenceEngine {
         "useless" to "not helpful yet",
     )
 
+    /** A situation in the conversation that calls for a particular response. */
+    private class Cue(
+        val category: String,
+        val weight: Int,
+        val tip: String,
+        val opener: String,
+        val trigger: Regex,
+        val satisfiedBy: Regex,
+    )
+
+    private val cues = listOf(
+        Cue(
+            "unempathetic", 30, "Acknowledge how they're feeling", "I'm sorry to hear that, that sounds really tough.",
+            Regex("""\b(ugh|sick|passed away|died|funeral|hospital|rough (day|week)|stressed|anxious|exhausted|frustrat\w*|broke up|lost my|bad news|struggling|overwhelmed|cancell?ed|stuck|terrible|awful|worst|nightmare|fired|laid off)\b""", RegexOption.IGNORE_CASE),
+            Regex("""\b(sorry|that sucks|tough|hope you|here for you|must be|sounds (hard|rough|awful|frustrating|stressful)|hugs|take care)\b""", RegexOption.IGNORE_CASE),
+        ),
+        Cue(
+            "missing_niceties", 20, "Congratulate them", "Congratulations, that's great news!",
+            Regex("""\b(got the job|promoted|promotion|engaged|got married|pregnant|graduated|we won|got accepted|good news|finally did it)\b""", RegexOption.IGNORE_CASE),
+            Regex("""\b(congrat\w*|amazing|awesome|great news|so happy|proud|well done)\b""", RegexOption.IGNORE_CASE),
+        ),
+        Cue(
+            "missing_niceties", 15, "Thank them for what they did", "Thanks so much for this!",
+            Regex("""\b(here you go|attached|i('ve| have)? sent|i fixed|i finished|i made|i did it|all done|i took care of)\b""", RegexOption.IGNORE_CASE),
+            Regex("""\b(thank\w*|thx|ty|appreciate\w*|cheers)\b""", RegexOption.IGNORE_CASE),
+        ),
+        Cue(
+            "socially_awkward", 12, "Say how you're doing and ask about them", "I'm doing well, thanks! How about you?",
+            Regex("""\b(how are you|how's it going|how have you been|how was your)\b""", RegexOption.IGNORE_CASE),
+            Regex("""\b(good|great|fine|well|not bad|okay|and you|how about you|you\?)\b""", RegexOption.IGNORE_CASE),
+        ),
+        Cue(
+            "missing_niceties", 8, "Say \"you're welcome\"", "You're welcome!",
+            Regex("""\b(thank you|thanks)\b""", RegexOption.IGNORE_CASE),
+            Regex("""\b(welcome|no problem|no worries|anytime|happy to|glad|np)\b""", RegexOption.IGNORE_CASE),
+        ),
+    )
+
+    private val bareCommand = Regex("""^\s*(send|give|do|fix|tell|call|get|make|stop|reply|answer|check|update)\b""", RegexOption.IGNORE_CASE)
+    private val politeMarkers = Regex("""\b(please|pls|thanks|thank you|could you|would you|can you|when you get a chance)\b""", RegexOption.IGNORE_CASE)
+
+    /** Cues triggered by the most recent on-screen text that the reply doesn't address. */
+    private fun missedCues(request: ToneRequest): List<Cue> {
+        // Approximate "their latest message" with the text just above the field.
+        val recent = request.screenContext.takeLast(600)
+        if (recent.isBlank()) return emptyList()
+        return cues.filter { it.trigger.containsMatchIn(recent) && !it.satisfiedBy.containsMatchIn(request.text) }
+    }
+
     override suspend fun status() = EngineStatus.Ready
 
     override suspend fun analyze(request: ToneRequest): ToneResult {
         val text = request.text
         var score = 0
         val categories = mutableListOf<String>()
+        val missing = mutableListOf<String>()
         var reason = ""
         for (rule in rules) {
             val hits = rule.regexes.count { it.containsMatchIn(text) }
@@ -78,11 +128,50 @@ class HeuristicEngine : InferenceEngine {
         }
         if ("!!" in text || "?!" in text) score += 10
         if ("??" in text) score += 8
-        return ToneResult(score.coerceIn(0, 100), categories.distinct(), reason, name)
+
+        if (bareCommand.containsMatchIn(text) && !politeMarkers.containsMatchIn(text)) {
+            score += 15
+            categories += "missing_niceties"
+            missing += "Soften the request with \"could you\" or \"please\""
+            if (reason.isEmpty()) reason = "A bare command can sound bossy."
+        }
+        for (cue in missedCues(request)) {
+            score += cue.weight
+            categories += cue.category
+            missing += cue.tip
+            if (reason.isEmpty()) reason = "The reply doesn't respond to what they just said."
+        }
+        val lastTheirs = request.screenContext.lines().lastOrNull { it.startsWith("[left]") }.orEmpty()
+        if (lastTheirs.length > 120 && text.trim().split(Regex("""\s+""")).size <= 2) {
+            score += 15
+            categories += "standoffish"
+            missing += "Match their effort with a fuller reply"
+            if (reason.isEmpty()) reason = "A one-word reply to a long message can feel cold."
+        }
+        return ToneResult(score.coerceIn(0, 100), categories.distinct(), reason, name, missing.distinct().take(3))
     }
 
     override suspend fun suggest(request: ToneRequest, analysis: ToneResult): Suggestions {
-        var softened = request.text
+        val softened = soften(request.text).ifBlank { "Okay." }
+        val openers = missedCues(request).take(2).joinToString(" ") { it.opener }
+        val polite = if (bareCommand.containsMatchIn(softened) && !politeMarkers.containsMatchIn(softened)) {
+            "Could you please " + softened.replaceFirstChar { it.lowercase() }.trimEnd('.', '!') + "?"
+        } else {
+            softened
+        }
+        val sentenceEnd = if (polite.last() in ".!?") "" else "."
+        return Suggestions(
+            rewrites = listOf(
+                Rewrite("Light touch", polite),
+                Rewrite("Warm", "${openers.ifEmpty { "Thanks for letting me know!" }} $polite"),
+                Rewrite("Professional", "Thanks for your message. $polite$sentenceEnd Let me know if you have any questions."),
+            ),
+            tip = "Offline mode only swaps obvious phrases. Enable Gemini for real rewrites.",
+        )
+    }
+
+    private fun soften(text: String): String {
+        var softened = text
         if (softened.count { it.isUpperCase() } > softened.count { it.isLowerCase() }) {
             softened = softened.lowercase().replaceFirstChar { it.uppercase() }
         }
@@ -97,16 +186,6 @@ class HeuristicEngine : InferenceEngine {
             }
         }
         softened = softened.replace(Regex("""\s{2,}"""), " ").replace(Regex("""\s+([,.!?])"""), "$1").trim()
-        softened = softened.replaceFirstChar { it.uppercase() }
-
-        val rewrites = listOf(
-            softened,
-            "Thanks for your patience. $softened",
-            "I might be missing something, but " + softened.replaceFirstChar { it.lowercase() },
-        ).distinct()
-        return Suggestions(
-            rewrites,
-            tip = "Offline mode only swaps obvious phrases. Enable Gemini for real rewrites.",
-        )
+        return softened.replaceFirstChar { it.uppercase() }
     }
 }

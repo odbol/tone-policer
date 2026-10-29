@@ -30,7 +30,7 @@ class CloudGeminiEngine(
     }
 
     override suspend fun suggest(request: ToneRequest, analysis: ToneResult): Suggestions = try {
-        Prompts.parseSuggestions(generate(Prompts.suggestions(request, analysis), temperature = 0.7))
+        Prompts.suggestThree(request, analysis) { prompt -> generate(prompt, temperature = 0.8) }
     } catch (e: SafetyBlockedException) {
         throw InferenceException("This text is too hostile for Gemini to rewrite. Try starting over.", e)
     }

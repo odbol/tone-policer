@@ -178,12 +178,35 @@
             android:minHeight="48dp"
             android:text="@string/show_good_border" />
 
+        <Switch
+            android:id="@+id/include_screen_context"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
+            android:text="@string/include_screen_context" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/include_screen_context_note"
+            android:textAppearance="@android:style/TextAppearance.Material.Caption" />
+
         <!-- 4. Try it -->
         <TextView
             style="@style/SectionTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/section_try" />
+
+        <EditText
+            android:id="@+id/tone_test_context"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="top|start"
+            android:hint="@string/try_context_hint"
+            android:importantForAutofill="no"
+            android:inputType="textMultiLine|textCapSentences"
+            android:minLines="2" />
 
         <EditText
             android:id="@+id/tone_test_input"

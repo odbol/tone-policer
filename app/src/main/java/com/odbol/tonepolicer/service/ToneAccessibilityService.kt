@@ -23,11 +23,13 @@ import com.odbol.tonepolicer.inference.ToneRequest
 import com.odbol.tonepolicer.inference.ToneResult
 import com.odbol.tonepolicer.overlay.OverlayController
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Watches the focused editable field in every app, scores its text with the configured
@@ -46,7 +48,8 @@ class ToneAccessibilityService : AccessibilityService(), SharedPreferences.OnSha
 
     private var trackedNode: AccessibilityNodeInfo? = null
     private var trackedText = ""
-    private var trackedPackage = ""
+    /** The request (text + screen context) that produced [latestResult]. */
+    private var latestRequest: ToneRequest? = null
     private var latestResult: ToneResult? = null
     private var analyzeJob: Job? = null
     private var suggestJob: Job? = null
@@ -100,7 +103,6 @@ class ToneAccessibilityService : AccessibilityService(), SharedPreferences.OnSha
         val text = if (node.isShowingHintText) "" else node.text?.toString().orEmpty()
         val sameField = node == trackedNode
         trackedNode = node
-        trackedPackage = pkg
 
         if (sameField && text == trackedText) {
             scheduleReposition()
@@ -121,14 +123,13 @@ class ToneAccessibilityService : AccessibilityService(), SharedPreferences.OnSha
             overlay.hide()
         }
 
-        val request = ToneRequest(text, pkg)
-        val cached = analysisCache.get(text)
-        if (cached != null) {
-            onAnalyzed(text, cached)
-            return
-        }
         analyzeJob = scope.launch {
             delay(prefs.debounceMs)
+            val request = ToneRequest(text, pkg, screenContext(node))
+            analysisCache.get(request.cacheKey)?.let {
+                onAnalyzed(request, it)
+                return@launch
+            }
             val result = try {
                 engine.analyze(request)
             } catch (e: CancellationException) {
@@ -138,15 +139,29 @@ class ToneAccessibilityService : AccessibilityService(), SharedPreferences.OnSha
                 prefs.lastError = "${engine.name}: ${e.message}"
                 return@launch
             }
-            analysisCache.put(text, result)
-            onAnalyzed(text, result)
+            analysisCache.put(request.cacheKey, result)
+            onAnalyzed(request, result)
         }
     }
 
-    private fun onAnalyzed(text: String, result: ToneResult) {
-        if (text != trackedText) return
+    private fun onAnalyzed(request: ToneRequest, result: ToneResult) {
+        if (request.text != trackedText) return
+        latestRequest = request
         latestResult = result
         render()
+    }
+
+    /** Reads the surrounding on-screen text off the main thread; the node tree walk is many binder calls. */
+    private suspend fun screenContext(node: AccessibilityNodeInfo): String {
+        if (!prefs.includeScreenContext) return ""
+        return withContext(Dispatchers.Default) {
+            try {
+                ScreenContextExtractor.extract(node)
+            } catch (e: RuntimeException) {
+                Log.w(TAG, "Couldn't read screen context", e)
+                ""
+            }
+        }
     }
 
     private fun shouldMonitor(node: AccessibilityNodeInfo, pkg: String): Boolean {
@@ -198,8 +213,9 @@ class ToneAccessibilityService : AccessibilityService(), SharedPreferences.OnSha
 
     private fun onFixClicked() {
         val result = latestResult ?: return
-        val text = trackedText
-        suggestionCache.get(text)?.let {
+        val request = latestRequest ?: return
+        val text = request.text
+        suggestionCache.get(request.cacheKey)?.let {
             overlay.showPanelSuggestions(result, it)
             return
         }
@@ -207,8 +223,8 @@ class ToneAccessibilityService : AccessibilityService(), SharedPreferences.OnSha
         suggestJob?.cancel()
         suggestJob = scope.launch {
             try {
-                val suggestions = engine.suggest(ToneRequest(text, trackedPackage), result)
-                suggestionCache.put(text, suggestions)
+                val suggestions = engine.suggest(request, result)
+                suggestionCache.put(request.cacheKey, suggestions)
                 if (text == trackedText) overlay.showPanelSuggestions(result, suggestions)
             } catch (e: CancellationException) {
                 throw e
@@ -256,6 +272,7 @@ class ToneAccessibilityService : AccessibilityService(), SharedPreferences.OnSha
         suggestJob?.cancel()
         trackedNode = null
         trackedText = ""
+        latestRequest = null
         latestResult = null
         if (::overlay.isInitialized) overlay.hide()
     }
@@ -272,6 +289,7 @@ class ToneAccessibilityService : AccessibilityService(), SharedPreferences.OnSha
             }
             Prefs.KEY_ENABLED -> if (!prefs.monitoringEnabled) clearTracking()
             Prefs.KEY_THRESHOLD, Prefs.KEY_SHOW_GOOD -> render()
+            Prefs.KEY_SCREEN_CONTEXT -> trackedText = ""
         }
     }
 

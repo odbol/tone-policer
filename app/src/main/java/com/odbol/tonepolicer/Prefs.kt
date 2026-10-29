@@ -46,6 +46,11 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(KEY_SHOW_GOOD, true)
         set(value) = sp.edit().putBoolean(KEY_SHOW_GOOD, value).apply()
 
+    /** Send the other visible text on screen (e.g. the chat history) along with the message. */
+    var includeScreenContext: Boolean
+        get() = sp.getBoolean(KEY_SCREEN_CONTEXT, true)
+        set(value) = sp.edit().putBoolean(KEY_SCREEN_CONTEXT, value).apply()
+
     val debounceMs: Long
         get() = sp.getLong(KEY_DEBOUNCE, 900L)
 
@@ -66,6 +71,7 @@ class Prefs(context: Context) {
         const val KEY_CLOUD_MODEL = "cloud_model"
         const val KEY_THRESHOLD = "flag_threshold"
         const val KEY_SHOW_GOOD = "show_good_border"
+        const val KEY_SCREEN_CONTEXT = "include_screen_context"
         const val KEY_DEBOUNCE = "debounce_ms"
         const val KEY_LAST_ERROR = "last_error"
 

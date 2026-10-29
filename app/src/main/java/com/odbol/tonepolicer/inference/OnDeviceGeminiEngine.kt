@@ -39,8 +39,9 @@ class OnDeviceGeminiEngine : InferenceEngine {
     }
 
     override suspend fun suggest(request: ToneRequest, analysis: ToneResult): Suggestions {
-        val raw = generate(Prompts.suggestions(request, analysis), temperature = 0.6f, topK = 20)
-        return Prompts.parseSuggestions(raw)
+        return Prompts.suggestThree(request, analysis) { prompt ->
+            generate(prompt, temperature = 0.7f, topK = 20)
+        }
     }
 
     private suspend fun generate(prompt: String, temperature: Float, topK: Int): String {

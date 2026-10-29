@@ -16,6 +16,7 @@ import android.widget.ProgressBar
 import android.widget.ScrollView
 import android.widget.TextView
 import com.odbol.tonepolicer.R
+import com.odbol.tonepolicer.inference.Rewrite
 import com.odbol.tonepolicer.inference.Suggestions
 import com.odbol.tonepolicer.inference.ToneResult
 
@@ -39,6 +40,7 @@ class SuggestionPanel(
     private val title = label(17f, onSurface, bold = true)
     private val categories = label(13f, muted)
     private val reason = label(14f, onSurface)
+    private val missing = label(14f, onSurface)
     private val suggestionsHeader = label(13f, muted, bold = true).apply { setText(R.string.suggestions) }
     private val progress = ProgressBar(context).apply { isIndeterminate = true }
     private val list = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
@@ -73,6 +75,7 @@ class SuggestionPanel(
         val body = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
         body.addView(categories, matchWrap(top = 2))
         body.addView(reason, matchWrap(top = 8))
+        body.addView(missing, matchWrap(top = 6))
         body.addView(suggestionsHeader, matchWrap(top = 14))
         body.addView(progress, LinearLayout.LayoutParams(dp(28), dp(28)).apply {
             topMargin = dp(8)
@@ -140,20 +143,24 @@ class SuggestionPanel(
         categories.visibility = if (result.categories.isEmpty()) GONE else VISIBLE
         reason.text = result.reason
         reason.visibility = if (result.reason.isBlank()) GONE else VISIBLE
+        missing.text = "Consider:\n" + result.missing.joinToString("\n") { "☐ $it" }
+        missing.visibility = if (result.missing.isEmpty()) GONE else VISIBLE
     }
 
-    private fun suggestionItem(rewrite: String) = label(15f, onSurface).apply {
-        text = rewrite
-        setPadding(dp(12), dp(10), dp(12), dp(10))
+    private fun suggestionItem(rewrite: Rewrite) = LinearLayout(context).apply {
+        orientation = LinearLayout.VERTICAL
+        setPadding(dp(12), dp(8), dp(12), dp(10))
         val shape = GradientDrawable().apply {
             cornerRadius = 12 * density
             setColor(itemBackground)
         }
         background = RippleDrawable(ColorStateList.valueOf(0x33808080), shape, null)
+        addView(label(11f, muted, bold = true).apply { text = rewrite.style.uppercase() })
+        addView(label(15f, onSurface).apply { text = rewrite.text }, matchWrap(top = 2))
         isClickable = true
-        setOnClickListener { onChosen(rewrite) }
+        setOnClickListener { onChosen(rewrite.text) }
         setOnLongClickListener {
-            onCopy(rewrite)
+            onCopy(rewrite.text)
             true
         }
     }

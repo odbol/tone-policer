@@ -1,10 +1,19 @@
 package com.odbol.tonepolicer.inference
 
-/** What the user is typing, plus where. */
+/**
+ * What the user is typing, plus where.
+ *
+ * [screenContext] is the other visible text in the same window (e.g. the chat history above the
+ * field), so the model can tell whether the reply acknowledges what the other person said.
+ */
 data class ToneRequest(
     val text: String,
     val packageName: String = "",
-)
+    val screenContext: String = "",
+) {
+    /** Cache key: the same reply can be fine in one conversation and rude in another. */
+    val cacheKey: String get() = "${screenContext.hashCode()}|$text"
+}
 
 /** Result of a tone check. [severity] is 0 (fine) to 100 (hostile). */
 data class ToneResult(
@@ -12,6 +21,8 @@ data class ToneResult(
     val categories: List<String>,
     val reason: String,
     val engine: String,
+    /** Social expectations the reply misses, e.g. "Thank them for their help". */
+    val missing: List<String> = emptyList(),
 ) {
     val severityFraction: Float get() = severity.coerceIn(0, 100) / 100f
 
@@ -29,10 +40,20 @@ data class ToneResult(
         }
 }
 
-data class Suggestions(
-    val rewrites: List<String>,
-    val tip: String = "",
+/** One rewrite, with a short label for its approach (e.g. "Warm", "Concise"). */
+data class Rewrite(
+    val style: String,
+    val text: String,
 )
+
+data class Suggestions(
+    val rewrites: List<Rewrite>,
+    val tip: String = "",
+) {
+    companion object {
+        const val COUNT = 3
+    }
+}
 
 sealed class EngineStatus(val description: String) {
     object Ready : EngineStatus("Ready")

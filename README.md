@@ -6,10 +6,46 @@ passive-aggressive or otherwise socially inept.
 
 - The focused text field gets a **glowing, pulsing border**. Its color runs from **green → yellow → red**
   as the severity score (0–100) goes up, and worse text pulses faster.
+- It reads the **rest of the screen** (the chat history or email above the field) so it can tell
+  whether your reply fits the conversation, not just whether the words are rude.
 - Once the score passes your threshold, a small **"✎ Fix tone"** button shows up above the field. Tap it
-  to get an explanation and three rewrites. Tap a rewrite to replace the field's text, or long-press it
+  for an explanation, a "Consider:" checklist of social cues you missed, and **three distinct rewrites**:
+  *Light touch*, *Warm* and *Professional*. Tap a rewrite to replace the field's text, or long-press it
   to copy.
 - Password fields, the keyboard's own fields, and this app's settings fields are never read.
+
+## Social expectations it checks
+
+Besides rude wording, the prompt asks Gemini to check the reply against the conversation on screen,
+and to flag only the expectations that apply:
+
+- **Acknowledge** the other person's point, question or effort before replying or disagreeing
+- **Empathize** with feelings, stress or bad news ("That sounds really frustrating")
+- **Celebrate** good news ("Congratulations!")
+- **Thank** them for help, time, information or compliments
+- **Apologize** when at fault, late or confused ("Sorry, I didn't quite understand that")
+- **Politeness:** please, and softened requests ("Could you…" rather than "Send it")
+- **Answer** the question they actually asked
+- **Return the courtesy:** if they asked how you are, ask back
+- **Match their effort** and formality; a one-word reply to a heartfelt message feels cold
+- **Give a reason or alternative** when saying no
+- **Disagree gently** with "I" statements instead of blame or absolutes
+- **Don't make it about yourself** when they share something personal
+- **Avoid sarcasm** and curtness that read as hostile in text
+- **Greetings and sign-offs** where the medium expects them
+- **Confirm next steps** when they're relying on you
+
+Missed cues come back as short to-dos (e.g. "Acknowledge that their flight got cancelled") and raise
+the severity score: 16–40 for a missing nicety, 41–70 for ignoring someone's feelings. The list lives
+in `Prompts.SOCIAL_EXPECTATIONS`.
+
+### Screen context
+
+`ScreenContextExtractor` walks the field's window for visible, non-editable, non-password text above
+the field. It keeps the roughly 2,500 characters closest to the field, which is where the newest
+messages are. Chat bubbles get a `[left]` tag (usually the other person) or `[right]` (usually you),
+based on where they sit horizontally. You can turn this off in settings. In cloud mode this text is
+sent to Google along with your message.
 
 ## How it works
 
@@ -17,7 +53,9 @@ passive-aggressive or otherwise socially inept.
  typing ─► AccessibilityEvent (TEXT_CHANGED / FOCUSED)
             │  debounce 900 ms, skip passwords, LRU cache
             ▼
-     InferenceEngine.analyze() ──► {"severity": 0-100, "categories": [...], "reason": "..."}
+     ScreenContextExtractor ──► visible conversation above the field
+            ▼
+     InferenceEngine.analyze() ──► {"severity", "categories", "reason", "missing": [...]}
             │
             ▼
      OverlayController (TYPE_ACCESSIBILITY_OVERLAY windows, no SYSTEM_ALERT_WINDOW needed)
@@ -35,7 +73,8 @@ loses focus.
 | `overlay/OverlayController.kt` | Adds and positions the three overlay windows |
 | `overlay/GlowBorderView.kt` | The glowing border (software layer + `BlurMaskFilter`) |
 | `overlay/SuggestionPanel.kt` | The suggestions card |
-| `inference/Prompts.kt` | Prompt templates plus lenient JSON parsing shared by all Gemini backends |
+| `service/ScreenContextExtractor.kt` | Collects the on-screen conversation around the field |
+| `inference/Prompts.kt` | Prompt templates, the social-expectations list, lenient JSON parsing, and the top-up that guarantees 3 rewrites |
 | `inference/*Engine.kt` | The inference backends (below) |
 | `ui/MainActivity.kt` | Settings, model download, in-app tester |
 
@@ -66,7 +105,8 @@ in the app.
   top, so on-device scoring may fail in some apps or on some builds. Auto mode catches this and moves
   on to the cloud or heuristic backend. The in-app "Try it" box always works, because the app is in the
   foreground there.
-- **Gemini Nano context** is small, so texts are cut to the last 1,500 characters.
+- **Gemini Nano context** is small, so the message is cut to its last 1,200 characters and the screen
+  context to its last 1,800.
 - **Safety filters:** cloud Gemini uses `BLOCK_ONLY_HIGH`. If Gemini refuses to read a text at all,
   it's scored 100.
 - **Play Store policy:** Google restricts the Accessibility API to apps that help people with

@@ -28,8 +28,11 @@
     <string name="flag_threshold">Show the fix-it button at severity %1$d+</string>
     <string name="show_good_border">Show a green border when the text looks fine</string>
 
+    <string name="include_screen_context">Use the conversation on screen as context</string>
+    <string name="include_screen_context_note">Lets Gemini check whether your reply acknowledges, thanks or empathizes with what the other person said. In cloud mode this visible text is sent to Google too.</string>
     <string name="section_try">4. Try it</string>
-    <string name="try_hint">Type something passive-aggressive here…</string>
+    <string name="try_context_hint">Their message (optional), e.g. "Ugh, my flight got cancelled and I'm stuck at the airport."</string>
+    <string name="try_hint">Your reply, e.g. "Can you still send me the slides tonight?"</string>
     <string name="check_now">Check in-app</string>
 
     <string name="fix_tone">✎ Fix tone</string>

@@ -136,6 +136,11 @@ class MainActivity : Activity() {
             isChecked = prefs.showGoodBorder
             setOnCheckedChangeListener { _, checked -> prefs.showGoodBorder = checked }
         }
+
+        findViewById<Switch>(R.id.include_screen_context).apply {
+            isChecked = prefs.includeScreenContext
+            setOnCheckedChangeListener { _, checked -> prefs.includeScreenContext = checked }
+        }
     }
 
     private fun updateServiceStatus() {
@@ -185,19 +190,23 @@ class MainActivity : Activity() {
     private fun checkNow() {
         val text = findViewById<EditText>(R.id.tone_test_input).text.toString()
         if (text.isBlank()) return
+        // Stands in for the on-screen conversation the service reads in other apps.
+        val theirMessage = findViewById<EditText>(R.id.tone_test_context).text.toString().trim()
+        val context = if (theirMessage.isEmpty()) "" else "[left] $theirMessage"
         checkResult.text = "Checking…"
         scope.launch {
             val engine = EngineFactory.create(prefs)
             try {
-                val request = ToneRequest(text, packageName)
+                val request = ToneRequest(text, packageName, context)
                 val result = engine.analyze(request)
                 val suggestions = engine.suggest(request, result)
                 checkResult.text = buildString {
                     appendLine("${result.label}: ${result.severity}/100 (${result.engine})")
                     if (result.categories.isNotEmpty()) appendLine(result.categoryLabel)
                     if (result.reason.isNotBlank()) appendLine(result.reason)
+                    result.missing.forEach { appendLine("☐ $it") }
                     appendLine()
-                    suggestions.rewrites.forEach { appendLine("• $it") }
+                    suggestions.rewrites.forEach { appendLine("• ${it.style}: ${it.text}") }
                     if (suggestions.tip.isNotBlank()) append(suggestions.tip)
                 }
             } catch (e: CancellationException) {
