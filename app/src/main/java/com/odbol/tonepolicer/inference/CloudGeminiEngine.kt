@@ -16,7 +16,7 @@ import java.net.URLEncoder
 class CloudGeminiEngine(
     private val apiKey: String,
     private val model: String,
-) : InferenceEngine {
+) : ToneAnalyzer, RewriteSuggester {
     override val name = "Gemini $model (cloud)"
 
     override suspend fun status(): EngineStatus =

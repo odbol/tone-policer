@@ -68,14 +68,21 @@ class InferenceException(message: String, cause: Throwable? = null) : Exception(
 /** Thrown when the model refused to process the text for safety reasons. */
 class SafetyBlockedException(message: String) : Exception(message)
 
-interface InferenceEngine {
+/** Common lifecycle for anything that runs a model. */
+interface InferenceBackend {
     val name: String
 
     suspend fun status(): EngineStatus
 
-    suspend fun analyze(request: ToneRequest): ToneResult
-
-    suspend fun suggest(request: ToneRequest, analysis: ToneResult): Suggestions
-
     fun close() {}
+}
+
+/** Scores how a message will land. Runs on every pause in typing, so it should be fast. */
+interface ToneAnalyzer : InferenceBackend {
+    suspend fun analyze(request: ToneRequest): ToneResult
+}
+
+/** Writes alternative phrasings. Runs only when the user taps "Fix tone". */
+interface RewriteSuggester : InferenceBackend {
+    suspend fun suggest(request: ToneRequest, analysis: ToneResult): Suggestions
 }

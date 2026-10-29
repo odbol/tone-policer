@@ -12,9 +12,9 @@ import kotlinx.coroutines.flow.Flow
  *
  * Text never leaves the phone. Requires an AICore-capable device (Pixel 9+, Galaxy S25+, etc.) and a
  * one-time model download. Note that AICore may refuse inference requests from apps that are not in
- * the foreground; [AutoEngine] falls back to another backend when that happens.
+ * the foreground; [FallbackAnalyzer] falls back to another backend when that happens.
  */
-class OnDeviceGeminiEngine : InferenceEngine {
+class OnDeviceGeminiEngine : ToneAnalyzer, RewriteSuggester {
     override val name = "Gemini Nano (on-device)"
 
     private val model by lazy { Generation.getClient() }

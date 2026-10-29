@@ -4,7 +4,7 @@ package com.odbol.tonepolicer.inference
  * Keyword-based fallback for devices without Gemini Nano and without an API key (e.g. emulators).
  * Crude, but lets the overlay be exercised fully offline.
  */
-class HeuristicEngine : InferenceEngine {
+class HeuristicEngine : ToneAnalyzer, RewriteSuggester {
     override val name = "Offline heuristic"
 
     private class Rule(val category: String, val weight: Int, val reason: String, terms: List<String>) {

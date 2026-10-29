@@ -13,6 +13,8 @@
     <string name="monitoring_enabled">Monitor text fields</string>
 
     <string name="section_engine">2. Inference engine</string>
+    <string name="analysis_engine">Tone analysis (runs as you type)</string>
+    <string name="suggestion_engine">Rewrite suggestions (runs when you tap Fix tone)</string>
     <string name="backend_auto">Auto: on-device first, then cloud, then offline</string>
     <string name="backend_on_device">On-device Gemini Nano (AICore)</string>
     <string name="backend_cloud">Cloud Gemini (Gemini API key)</string>

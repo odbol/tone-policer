@@ -67,7 +67,26 @@ class MainActivity : Activity() {
             setOnCheckedChangeListener { _, checked -> prefs.monitoringEnabled = checked }
         }
 
-        bindBackendPicker()
+        bindBackendPicker(
+            R.id.analysis_group,
+            mapOf(
+                Backend.AUTO to R.id.analysis_auto,
+                Backend.ON_DEVICE to R.id.analysis_on_device,
+                Backend.CLOUD to R.id.analysis_cloud,
+                Backend.HEURISTIC to R.id.analysis_heuristic,
+            ),
+            prefs.analysisBackend,
+        ) { prefs.analysisBackend = it }
+        bindBackendPicker(
+            R.id.suggestion_group,
+            mapOf(
+                Backend.AUTO to R.id.suggestion_auto,
+                Backend.ON_DEVICE to R.id.suggestion_on_device,
+                Backend.CLOUD to R.id.suggestion_cloud,
+                Backend.HEURISTIC to R.id.suggestion_heuristic,
+            ),
+            prefs.suggestionBackend,
+        ) { prefs.suggestionBackend = it }
         bindCloudFields()
         bindBehavior()
 
@@ -91,17 +110,16 @@ class MainActivity : Activity() {
         super.onDestroy()
     }
 
-    private fun bindBackendPicker() {
-        val ids = mapOf(
-            Backend.AUTO to R.id.backend_auto,
-            Backend.ON_DEVICE to R.id.backend_on_device,
-            Backend.CLOUD to R.id.backend_cloud,
-            Backend.HEURISTIC to R.id.backend_heuristic,
-        )
-        val group = findViewById<RadioGroup>(R.id.backend_group)
-        group.check(ids.getValue(prefs.backend))
+    private fun bindBackendPicker(
+        groupId: Int,
+        ids: Map<Backend, Int>,
+        current: Backend,
+        onChanged: (Backend) -> Unit,
+    ) {
+        val group = findViewById<RadioGroup>(groupId)
+        ids[current]?.let { group.check(it) }
         group.setOnCheckedChangeListener { _, checkedId ->
-            ids.entries.firstOrNull { it.value == checkedId }?.let { prefs.backend = it.key }
+            ids.entries.firstOrNull { it.value == checkedId }?.let { onChanged(it.key) }
         }
     }
 
@@ -195,17 +213,20 @@ class MainActivity : Activity() {
         val context = if (theirMessage.isEmpty()) "" else "[left] $theirMessage"
         checkResult.text = "Checking…"
         scope.launch {
-            val engine = EngineFactory.create(prefs)
+            val analyzer = EngineFactory.createAnalyzer(prefs)
+            val suggester = EngineFactory.createSuggester(prefs)
             try {
                 val request = ToneRequest(text, packageName, context)
-                val result = engine.analyze(request)
-                val suggestions = engine.suggest(request, result)
+                val result = analyzer.analyze(request)
+                checkResult.text = "${result.label}: ${result.severity}/100 (${result.engine})\nGetting suggestions…"
+                val suggestions = suggester.suggest(request, result)
                 checkResult.text = buildString {
                     appendLine("${result.label}: ${result.severity}/100 (${result.engine})")
                     if (result.categories.isNotEmpty()) appendLine(result.categoryLabel)
                     if (result.reason.isNotBlank()) appendLine(result.reason)
                     result.missing.forEach { appendLine("☐ $it") }
                     appendLine()
+                    appendLine("Suggestions (${suggester.name}):")
                     suggestions.rewrites.forEach { appendLine("• ${it.style}: ${it.text}") }
                     if (suggestions.tip.isNotBlank()) append(suggestions.tip)
                 }
@@ -214,7 +235,8 @@ class MainActivity : Activity() {
             } catch (e: Exception) {
                 checkResult.text = "Error: ${e.message}"
             } finally {
-                engine.close()
+                analyzer.close()
+                suggester.close()
             }
         }
     }

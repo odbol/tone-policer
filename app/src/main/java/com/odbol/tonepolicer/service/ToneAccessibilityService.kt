@@ -17,7 +17,8 @@ import android.widget.Toast
 import com.odbol.tonepolicer.Prefs
 import com.odbol.tonepolicer.R
 import com.odbol.tonepolicer.inference.EngineFactory
-import com.odbol.tonepolicer.inference.InferenceEngine
+import com.odbol.tonepolicer.inference.RewriteSuggester
+import com.odbol.tonepolicer.inference.ToneAnalyzer
 import com.odbol.tonepolicer.inference.Suggestions
 import com.odbol.tonepolicer.inference.ToneRequest
 import com.odbol.tonepolicer.inference.ToneResult
@@ -33,7 +34,7 @@ import kotlinx.coroutines.withContext
 
 /**
  * Watches the focused editable field in every app, scores its text with the configured
- * [InferenceEngine], and drives the glow / fix-it overlay.
+ * [ToneAnalyzer], fetches rewrites from the [RewriteSuggester] on demand, and drives the glow / fix-it overlay.
  */
 class ToneAccessibilityService : AccessibilityService(), SharedPreferences.OnSharedPreferenceChangeListener {
     private val scope = MainScope()
@@ -41,7 +42,8 @@ class ToneAccessibilityService : AccessibilityService(), SharedPreferences.OnSha
 
     private lateinit var prefs: Prefs
     private lateinit var overlay: OverlayController
-    private lateinit var engine: InferenceEngine
+    private lateinit var analyzer: ToneAnalyzer
+    private lateinit var suggester: RewriteSuggester
 
     private val analysisCache = LruCache<String, ToneResult>(128)
     private val suggestionCache = LruCache<String, Suggestions>(32)
@@ -65,7 +67,8 @@ class ToneAccessibilityService : AccessibilityService(), SharedPreferences.OnSha
         super.onServiceConnected()
         prefs = Prefs(this)
         prefs.register(this)
-        engine = EngineFactory.create(prefs)
+        analyzer = EngineFactory.createAnalyzer(prefs)
+        suggester = EngineFactory.createSuggester(prefs)
         overlay = OverlayController(
             context = this,
             onFixClicked = ::onFixClicked,
@@ -131,12 +134,12 @@ class ToneAccessibilityService : AccessibilityService(), SharedPreferences.OnSha
                 return@launch
             }
             val result = try {
-                engine.analyze(request)
+                analyzer.analyze(request)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 Log.w(TAG, "Tone analysis failed", e)
-                prefs.lastError = "${engine.name}: ${e.message}"
+                prefs.lastError = "${analyzer.name}: ${e.message}"
                 return@launch
             }
             analysisCache.put(request.cacheKey, result)
@@ -223,7 +226,7 @@ class ToneAccessibilityService : AccessibilityService(), SharedPreferences.OnSha
         suggestJob?.cancel()
         suggestJob = scope.launch {
             try {
-                val suggestions = engine.suggest(request, result)
+                val suggestions = suggester.suggest(request, result)
                 suggestionCache.put(request.cacheKey, suggestions)
                 if (text == trackedText) overlay.showPanelSuggestions(result, suggestions)
             } catch (e: CancellationException) {
@@ -280,11 +283,13 @@ class ToneAccessibilityService : AccessibilityService(), SharedPreferences.OnSha
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         when (key) {
             in Prefs.ENGINE_KEYS -> {
-                engine.close()
-                engine = EngineFactory.create(prefs)
+                analyzer.close()
+                suggester.close()
+                analyzer = EngineFactory.createAnalyzer(prefs)
+                suggester = EngineFactory.createSuggester(prefs)
                 analysisCache.evictAll()
                 suggestionCache.evictAll()
-                // Re-score whatever is on screen with the new engine.
+                // Re-score whatever is on screen with the new backends.
                 trackedText = ""
             }
             Prefs.KEY_ENABLED -> if (!prefs.monitoringEnabled) clearTracking()
@@ -303,7 +308,8 @@ class ToneAccessibilityService : AccessibilityService(), SharedPreferences.OnSha
         if (::overlay.isInitialized) {
             overlay.hide()
             prefs.unregister(this)
-            engine.close()
+            analyzer.close()
+            suggester.close()
         }
         super.onDestroy()
     }

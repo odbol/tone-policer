@@ -60,34 +60,81 @@
             android:layout_height="wrap_content"
             android:text="@string/section_engine" />
 
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/analysis_engine"
+            android:textStyle="bold" />
+
         <RadioGroup
-            android:id="@+id/backend_group"
+            android:id="@+id/analysis_group"
             android:layout_width="match_parent"
             android:layout_height="wrap_content">
 
             <RadioButton
-                android:id="@+id/backend_auto"
+                android:id="@+id/analysis_auto"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:minHeight="48dp"
                 android:text="@string/backend_auto" />
 
             <RadioButton
-                android:id="@+id/backend_on_device"
+                android:id="@+id/analysis_on_device"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:minHeight="48dp"
                 android:text="@string/backend_on_device" />
 
             <RadioButton
-                android:id="@+id/backend_cloud"
+                android:id="@+id/analysis_cloud"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:minHeight="48dp"
                 android:text="@string/backend_cloud" />
 
             <RadioButton
-                android:id="@+id/backend_heuristic"
+                android:id="@+id/analysis_heuristic"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
+                android:text="@string/backend_heuristic" />
+        </RadioGroup>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/suggestion_engine"
+            android:textStyle="bold" />
+
+        <RadioGroup
+            android:id="@+id/suggestion_group"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <RadioButton
+                android:id="@+id/suggestion_auto"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
+                android:text="@string/backend_auto" />
+
+            <RadioButton
+                android:id="@+id/suggestion_on_device"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
+                android:text="@string/backend_on_device" />
+
+            <RadioButton
+                android:id="@+id/suggestion_cloud"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
+                android:text="@string/backend_cloud" />
+
+            <RadioButton
+                android:id="@+id/suggestion_heuristic"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:minHeight="48dp"

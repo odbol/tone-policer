@@ -55,12 +55,12 @@ sent to Google along with your message.
             ▼
      ScreenContextExtractor ──► visible conversation above the field
             ▼
-     InferenceEngine.analyze() ──► {"severity", "categories", "reason", "missing": [...]}
+     ToneAnalyzer.analyze() ──► {"severity", "categories", "reason", "missing": [...]}
             │
             ▼
      OverlayController (TYPE_ACCESSIBILITY_OVERLAY windows, no SYSTEM_ALERT_WINDOW needed)
        ├─ GlowBorderView: blurred, pulsing round-rect around the field's screen bounds
-       ├─ "Fix tone" pill above the field ──tap──► InferenceEngine.suggest()
+       ├─ "Fix tone" pill above the field ──tap──► RewriteSuggester.suggest()
        └─ SuggestionPanel ──tap──► ACTION_SET_TEXT on the field (falls back to the clipboard)
 ```
 
@@ -69,26 +69,34 @@ loses focus.
 
 | File | Role |
 | --- | --- |
-| `service/ToneAccessibilityService.kt` | Tracks the focused field, debounces, calls the engine, applies rewrites |
+| `service/ToneAccessibilityService.kt` | Tracks the focused field, debounces, calls the analyzer and suggester, applies rewrites |
 | `overlay/OverlayController.kt` | Adds and positions the three overlay windows |
 | `overlay/GlowBorderView.kt` | The glowing border (software layer + `BlurMaskFilter`) |
 | `overlay/SuggestionPanel.kt` | The suggestions card |
 | `service/ScreenContextExtractor.kt` | Collects the on-screen conversation around the field |
 | `inference/Prompts.kt` | Prompt templates, the social-expectations list, lenient JSON parsing, and the top-up that guarantees 3 rewrites |
+| `inference/ToneModels.kt` | The `ToneAnalyzer` and `RewriteSuggester` interfaces and their data types |
 | `inference/*Engine.kt` | The inference backends (below) |
+| `inference/Fallback.kt` | The "Auto" chains for each interface |
 | `ui/MainActivity.kt` | Settings, model download, in-app tester |
 
 ## Inference options
 
-Pick one in the app under **2. Inference engine**. Every backend implements the same
-`InferenceEngine` interface (`analyze` + `suggest`), so adding another one only touches
-`EngineFactory`.
+Analysis and suggestions are separate jobs with separate interfaces, and you pick a backend for each
+under **2. Inference engine**:
+
+- `ToneAnalyzer.analyze()` scores the tone. It runs on every pause in typing, so it needs to be fast and
+  cheap.
+- `RewriteSuggester.suggest()` writes the three rewrites. It runs only when you tap "Fix tone", so it
+  can be slower and needs a generative model.
+
+A backend can implement either interface or both. Adding one only touches `EngineFactory`.
 
 | Option | Status | Privacy | Devices | Cost / setup | Quality and latency |
 | --- | --- | --- | --- | --- | --- |
 | **A. On-device Gemini Nano via ML Kit GenAI Prompt API** (`OnDeviceGeminiEngine`) | ✅ Implemented | Text stays on the phone | AICore devices only (Pixel 9+, Galaxy S25+, some others) | Free; one-time model download (button in the app) | Good at scoring, decent at rewrites; roughly 0.3–1 s |
 | **B. Cloud Gemini via the Gemini Developer API (REST + API key)** (`CloudGeminiEngine`) | ✅ Implemented | Text goes to Google | Any device with internet | Free tier available; get a key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey) | Best quality; roughly 0.5–1.5 s with `gemini-flash-lite-latest` (any model name works) |
-| **C. Auto** (`AutoEngine`) | ✅ Implemented, default | On-device when possible | Any | Uses whatever is set up | Tries A, then B (if a key is set), then D. Falls through on errors |
+| **C. Auto** (`FallbackAnalyzer` / `FallbackSuggester`) | ✅ Implemented, default | On-device when possible | Any | Uses whatever is set up | Tries A, then B (if a key is set), then D. Falls through on errors |
 | **D. Offline keyword heuristic** (`HeuristicEngine`) | ✅ Implemented | On the phone | Any, including emulators | None | Crude. For demos and for testing the overlay |
 | E. ML Kit GenAI **Rewriting** API (`com.google.mlkit:genai-rewriting`) | Not implemented | On the phone | AICore devices | Free | Purpose-built rewrites (`PROFESSIONAL`, `FRIENDLY`, `REPHRASE` …). It can't score severity, so it would pair with A for `suggest()` |
 | F. **Firebase AI Logic** (`com.google.firebase:firebase-ai`) | Not implemented | Text goes to Google | Any | Needs a Firebase project and `google-services.json` | Same models as B, but no API key ships in the APK, and you get App Check and quotas. The right choice for a Play Store release |

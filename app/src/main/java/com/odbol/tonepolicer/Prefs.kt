@@ -23,9 +23,15 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(KEY_ENABLED, true)
         set(value) = sp.edit().putBoolean(KEY_ENABLED, value).apply()
 
-    var backend: Backend
-        get() = Backend.fromId(sp.getString(KEY_BACKEND, null))
-        set(value) = sp.edit().putString(KEY_BACKEND, value.id).apply()
+    /** Which model scores the tone on every pause in typing. */
+    var analysisBackend: Backend
+        get() = Backend.fromId(sp.getString(KEY_ANALYSIS_BACKEND, null))
+        set(value) = sp.edit().putString(KEY_ANALYSIS_BACKEND, value.id).apply()
+
+    /** Which model writes the rewrites when "Fix tone" is tapped. */
+    var suggestionBackend: Backend
+        get() = Backend.fromId(sp.getString(KEY_SUGGESTION_BACKEND, null))
+        set(value) = sp.edit().putString(KEY_SUGGESTION_BACKEND, value.id).apply()
 
     // Stored in plain app-private prefs. For a production build, prefer Firebase AI Logic
     // (no key on device) or a server-side proxy.
@@ -66,7 +72,8 @@ class Prefs(context: Context) {
 
     companion object {
         const val KEY_ENABLED = "monitoring_enabled"
-        const val KEY_BACKEND = "backend"
+        const val KEY_ANALYSIS_BACKEND = "analysis_backend"
+        const val KEY_SUGGESTION_BACKEND = "suggestion_backend"
         const val KEY_API_KEY = "gemini_api_key"
         const val KEY_CLOUD_MODEL = "cloud_model"
         const val KEY_THRESHOLD = "flag_threshold"
@@ -75,8 +82,8 @@ class Prefs(context: Context) {
         const val KEY_DEBOUNCE = "debounce_ms"
         const val KEY_LAST_ERROR = "last_error"
 
-        /** Keys that require rebuilding the inference engine when they change. */
-        val ENGINE_KEYS = setOf(KEY_BACKEND, KEY_API_KEY, KEY_CLOUD_MODEL)
+        /** Keys that require rebuilding the analyzer / suggester when they change. */
+        val ENGINE_KEYS = setOf(KEY_ANALYSIS_BACKEND, KEY_SUGGESTION_BACKEND, KEY_API_KEY, KEY_CLOUD_MODEL)
 
         const val DEFAULT_CLOUD_MODEL = "gemini-flash-lite-latest"
     }
