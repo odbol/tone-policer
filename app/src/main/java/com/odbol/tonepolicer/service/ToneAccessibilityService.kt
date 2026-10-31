@@ -8,6 +8,7 @@ import android.graphics.Rect
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.util.Log
 import android.util.LruCache
 import android.view.accessibility.AccessibilityEvent
@@ -54,6 +55,7 @@ class ToneAccessibilityService : AccessibilityService(), SharedPreferences.OnSha
     private var latestRequest: ToneRequest? = null
     private var latestResult: ToneResult? = null
     private var analyzeJob: Job? = null
+    private var lastAnalysisAtMs = 0L
     private var suggestJob: Job? = null
     private val bounds = Rect()
 
@@ -116,7 +118,7 @@ class ToneAccessibilityService : AccessibilityService(), SharedPreferences.OnSha
         suggestJob?.cancel()
         overlay.hidePanel()
 
-        if (text.isBlank() || text.trim().length < MIN_CHARS) {
+        if (text.isBlank() || text.trim().split(WHITESPACE).size < MIN_WORDS) {
             latestResult = null
             overlay.hide()
             return
@@ -127,12 +129,15 @@ class ToneAccessibilityService : AccessibilityService(), SharedPreferences.OnSha
         }
 
         analyzeJob = scope.launch {
-            delay(prefs.debounceMs)
+            // Trailing debounce, plus at most one analysis call per MIN_ANALYSIS_INTERVAL_MS.
+            val sinceLast = SystemClock.elapsedRealtime() - lastAnalysisAtMs
+            delay(maxOf(prefs.debounceMs, MIN_ANALYSIS_INTERVAL_MS - sinceLast))
             val request = ToneRequest(text, pkg, screenContext(node))
             analysisCache.get(request.cacheKey)?.let {
                 onAnalyzed(request, it)
                 return@launch
             }
+            lastAnalysisAtMs = SystemClock.elapsedRealtime()
             val result = try {
                 analyzer.analyze(request)
             } catch (e: CancellationException) {
@@ -316,7 +321,9 @@ class ToneAccessibilityService : AccessibilityService(), SharedPreferences.OnSha
 
     private companion object {
         const val TAG = "ToneService"
-        const val MIN_CHARS = 4
+        const val MIN_WORDS = 4
+        const val MIN_ANALYSIS_INTERVAL_MS = 3_000L
+        val WHITESPACE = Regex("""\s+""")
         const val REPOSITION_THROTTLE_MS = 50L
     }
 }
